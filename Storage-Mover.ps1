@@ -47,12 +47,6 @@ function local:Migrate-AzureVMs
         Write-Host "Path to VM export doesn't exist...  Ensure an 'Export' folder exists before executing this script...  Exiting Script."
         Exit
     }
-    
-    # Do we just want to migrate storage accounts?  If so, let's use the existing Cloud Service name
-    if($DestCloudService -eq $null){
-        Write-Host "Destination Cloud Service was not specified.  Will use the same Cloud Service name as the source..."
-        $DestCloudService=$SourceCloudService
-    }
 
     # Do we want to get a specific VM or by cloud service
 	if($SourceCloudService -ne $null -and $VMName -ne $null){
@@ -65,6 +59,12 @@ function local:Migrate-AzureVMs
     if($VMs -eq $null){
         Write-Host "No VMs to migrate...  Exiting Script."
         Exit
+    }
+    
+    # Do we just want to migrate storage accounts?  If so, let's use the existing Cloud Service name
+    if($DestCloudService -eq $null){
+        Write-Host "Destination Cloud Service was not specified.  Will use the same Cloud Service name as the source..."
+        $DestCloudService=$SourceCloudService
     }
 
     # Get the current Azure Subscription
