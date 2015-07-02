@@ -51,7 +51,7 @@ function local:Migrate-AzureVMs
     # Do we just want to migrate storage accounts?  If so, let's use the existing Cloud Service name
     if($DestCloudService -eq $null){
         Write-Host "Destination Cloud Service was not specified.  Will use the same Cloud Service name as the source..."
-        $SourceCloudService=$DestCloudService
+        $DestCloudService=$SourceCloudService
     }
 
     # Do we want to get a specific VM or by cloud service
@@ -108,7 +108,8 @@ function local:Migrate-AzureVMs
             $blobName = $disk.MediaLink.Segments[2]
             $targetBlob = Start-CopyAzureStorageBlob -SrcContainer vhds -SrcBlob $blobName -DestContainer vhds -DestBlob $blobName `
                                                         -Context $sourceContext -DestContext $destContext -Force
-            Write-Host "Copying blob $blobName"
+            # Write copy initiated status
+            Write-Host "Copying blob $blobName to $DestStorageAcct"
 
             # Log the status of the file transfer from one account to the other
             $BlobCopyState = $targetBlob | Get-AzureStorageBlobCopyState
@@ -120,6 +121,9 @@ function local:Migrate-AzureVMs
                 $BlobCopyState = $targetBlob | Get-AzureStorageBlobCopyState
             }
 
+            # Write finish status
+            Write-Host "Blob $blobName has been copied to $DestStorageAcct"
+            
             # Create variable of each disk for remapping
             if ($disk –eq $VM.VM.OSVirtualHardDisk )
             {
@@ -171,7 +175,14 @@ function local:Migrate-AzureVMs
         New-AzureVM @NewVMParams -WaitForBoot
 
         # Remove original VHDs
-
+        if($RemoveSourceVHDs -eq $true){
+            foreach($disk in $allDisks)
+            {
+                # Delete the actual blob from the source storage account
+                Remove-AzureStorageBlob -Blob $disk.MediaLink.Segments[2] -Container "vhds" -Context $sourceContext
+                Write-Host "Removed $disk.MediaLink.Segments[2] from $sourceStorageAccount"
+            }
+        }
         Write-Host "$VM.Name has been migrated from $sourceStorageAccount to $DestStorageAcct"
     }
 }
@@ -180,10 +191,9 @@ function local:Migrate-AzureVMs
 
 #Examples
 # test variables
-$SourceCloudService = "StorageEast001"
-$DestCloudService   = "MigratedStorageEast001"
+$SourceCloudService = "JackMigrateStorage"
 $DestStorageAcct    = "eaststoragetest002"
 $DestStorageAcctKey = "HzTh1Clextsh4QGttNL5gAcFdUY7d4aU6HNabb4ug7YaFCzAx8yvr7+dHApR7gnUGnjLKHXVvdZ/w3VD4FZ4kg=="
-Migrate-AzureVMs -SourceCloudService $SourceCloudService -DestCloudService $DestCloudService -DestStorageAcct $DestStorageAcct -DestStorageAcctKey $DestStorageAcctKey
+Migrate-AzureVMs -SourceCloudService $SourceCloudService -DestStorageAcct $DestStorageAcct -DestStorageAcctKey $DestStorageAcctKey
 
 ## End Script
