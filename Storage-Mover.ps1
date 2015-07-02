@@ -49,7 +49,7 @@ function local:Migrate-AzureVMs
     }
 
     # Do we want to get a specific VM or by cloud service
-	if($SourceCloudService -ne $null -and $VMName -ne $null){
+	if($SourceCloudService -ne "" -and $VMName -ne ""){
 		$VMs = Get-AzureVM -ServiceName $SourceCloudService -Name $VMName -ErrorAction SilentlyContinue
 	}else{
 		$VMs = Get-AzureVM -ServiceName $SourceCloudService -ErrorAction SilentlyContinue
@@ -62,9 +62,10 @@ function local:Migrate-AzureVMs
     }
     
     # Do we just want to migrate storage accounts?  If so, let's use the existing Cloud Service name
-    if($DestCloudService -eq $null){
-        Write-Host "Destination Cloud Service was not specified.  Will use the same Cloud Service name as the source..."
-        $DestCloudService=$SourceCloudService
+	Write-Host $DestCloudService
+    if($DestCloudService -eq ""){
+		$DestCloudService=$SourceCloudService
+        Write-Host "Destination Cloud Service was not specified.  Will use $DestCloudService as the destination..."
     }
 
     # Get the current Azure Subscription
@@ -191,7 +192,7 @@ function local:Migrate-AzureVMs
 
 #Examples
 # test variables
-$SourceCloudService = "JackMigrateStorage"
+$SourceCloudService = "JackTestMigration"
 $DestStorageAcct    = "eaststoragetest002"
 $DestStorageAcctKey = "HzTh1Clextsh4QGttNL5gAcFdUY7d4aU6HNabb4ug7YaFCzAx8yvr7+dHApR7gnUGnjLKHXVvdZ/w3VD4FZ4kg=="
 Migrate-AzureVMs -SourceCloudService $SourceCloudService -DestStorageAcct $DestStorageAcct -DestStorageAcctKey $DestStorageAcctKey
