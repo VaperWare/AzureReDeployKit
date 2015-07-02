@@ -20,7 +20,8 @@ Param(
     [parameter(Mandatory=$false)][string]$DestCloudService = "",
 	[parameter(Mandatory=$false)][string]$VMName = "",
 	[parameter(Mandatory=$false)][string]$DestStorageAcct = "",
-    [parameter(Mandatory=$false)][string]$DestStorageAcctKey = ""
+    [parameter(Mandatory=$false)][string]$DestStorageAcctKey = "",
+    [parameter(Mandatory=$false)][bool]$RemoveSourceVHDs = $false
 )
 
 #Copy VM from subscription to subscription
@@ -28,15 +29,29 @@ Param(
 function local:Migrate-AzureVMs
 {
     param ([parameter(Mandatory=$true)][string]$SourceCloudService = "",
-    [parameter(Mandatory=$true)][string]$DestCloudService = "",
+    [parameter(Mandatory=$false)][string]$DestCloudService = "",
 	[parameter(Mandatory=$false)][string]$VMName = "",
 	[parameter(Mandatory=$true)][string]$DestStorageAcct = "",
-    [parameter(Mandatory=$true)][string]$DestStorageAcctKey = "")
+    [parameter(Mandatory=$true)][string]$DestStorageAcctKey = "",
+    [parameter(Mandatory=$false)][bool]$RemoveSourceVHDs = $false)
+
+    # Check if we have an Azure Subscription
+    if((Get-AzureSubscription) -eq $null){
+        Write-Host "An Azure subscription is not present; please add one via Get-AzureAccount...  Exiting Script."
+        Exit
+    }
 
     # Check if Export directory exists
-    if ((Test-Path -path ((Get-Location).Path + "\Export\")) -ne $True){
-        Write-Host "Path to VM export doesn't exist...  Ensure a 'Export' folder exists before executing this script...  Exiting Script."
+    $ExportXMLPath = (Get-Location).Path + "\Export\"
+    if ((Test-Path -Path $ExportXMLPath) -eq $False){
+        Write-Host "Path to VM export doesn't exist...  Ensure an 'Export' folder exists before executing this script...  Exiting Script."
         Exit
+    }
+    
+    # Do we just want to migrate storage accounts?  If so, let's use the existing Cloud Service name
+    if($DestCloudService -eq $null){
+        Write-Host "Destination Cloud Service was not specified.  Will use the same Cloud Service name as the source..."
+        $SourceCloudService=$DestCloudService
     }
 
     # Do we want to get a specific VM or by cloud service
@@ -67,7 +82,7 @@ function local:Migrate-AzureVMs
     # Iterate through all the VM(s) in the cloud service
 	foreach($VM in $VMs){
         # XML File that will be used to storage the VM info
-        $VMConfigPath = ((Get-Location).Path + "\Export\"+$VM.Name+".xml")
+        $VMConfigPath = $ExportXMLPath+$VM.Name+".xml"
 
         # Export the current config as a backup
 		Export-AzureVM -ServiceName $VM.ServiceName -Name $VM.Name -Path $VMConfigPath
@@ -121,6 +136,9 @@ function local:Migrate-AzureVMs
         # Remove Azure Disk from the Azure disk repository in the current subscription
         Remove-AzureDisk -DiskName $VM.VM.OSVirtualHardDisk.DiskName
 
+        # Remove original Cloud Service
+        Remove-AzureService -ServiceName $SourceCloudService -Force
+
         # Add copied OS disk to the Microsoft Azure disk repository
         Add-AzureDisk -OS $VM.VM.OSVirtualHardDisk.OS -DiskName $VM.VM.OSVirtualHardDisk.DiskName -MediaLocation $destOSDisk.ICloudBlob.Uri.OriginalString
         foreach($currenDataDisk in $destDataDisks)
@@ -151,19 +169,21 @@ function local:Migrate-AzureVMs
 
         # Provision the VM
         New-AzureVM @NewVMParams -WaitForBoot
-    }
 
-    Write-Output ($ArrayofVMs | ConvertTo-XML -notypeinformation).InnerXml
+        # Remove original VHDs
+
+        Write-Host "$VM.Name has been migrated from $sourceStorageAccount to $DestStorageAcct"
+    }
 }
 
 #EndRegion
 
 #Examples
 # test variables
-$SourceCloudService = "JackTestVM002"
-$DestCloudService   = "RightNow"
-$DestStorageAcct    = "eaststoragetest001"
-$DestStorageAcctKey = "JczYofh/B/Bh1Y5ug/ofGB94N6bb467oEu+TstdTA2Ly1kf1DMsLBCVTmT5os1RmjNd/SIWEjbeRyk2dtx/Rbg=="
+$SourceCloudService = "StorageEast001"
+$DestCloudService   = "MigratedStorageEast001"
+$DestStorageAcct    = "eaststoragetest002"
+$DestStorageAcctKey = "HzTh1Clextsh4QGttNL5gAcFdUY7d4aU6HNabb4ug7YaFCzAx8yvr7+dHApR7gnUGnjLKHXVvdZ/w3VD4FZ4kg=="
 Migrate-AzureVMs -SourceCloudService $SourceCloudService -DestCloudService $DestCloudService -DestStorageAcct $DestStorageAcct -DestStorageAcctKey $DestStorageAcctKey
 
 ## End Script
