@@ -43,7 +43,7 @@ function local:Migrate-AzureVMs
 
     # Check if Export directory exists
     $ExportXMLPath = (Get-Location).Path + "\Export\"
-    if ((Test-Path -Path $ExportXMLPath) -eq $False){
+    if((Test-Path -Path $ExportXMLPath) -eq $False){
         Write-Host "Path to VM export doesn't exist...  Ensure an 'Export' folder exists before executing this script...  Exiting Script."
         Exit
     }
@@ -74,8 +74,7 @@ function local:Migrate-AzureVMs
     # Verify we have access to the destination storage account
     $destStorage = Get-AzureStorageAccount -StorageAccountName $DestStorageAcct
     $destContext = New-AzureStorageContext –StorageAccountName $DestStorageAcct -StorageAccountKey $DestStorageAcctKey -ErrorAction SilentlyContinue
-    if ((Get-AzureStorageContainer -Context $destContext -Name vhds -ErrorAction SilentlyContinue) -eq $null)
-    {
+    if((Get-AzureStorageContainer -Context $destContext -Name vhds -ErrorAction SilentlyContinue) -eq $null){
         Write-Host "Error connecting to the storage account..."
         Exit
     }
@@ -126,7 +125,7 @@ function local:Migrate-AzureVMs
             Write-Host "Blob $blobName has been copied to $DestStorageAcct"
             
             # Create variable of each disk for remapping
-            if ($disk –eq $VM.VM.OSVirtualHardDisk )
+            if($disk -eq $VM.VM.OSVirtualHardDisk)
             {
                 $destOSDisk = $targetBlob
             }
@@ -137,7 +136,7 @@ function local:Migrate-AzureVMs
         }
 
         # Delete Azure source VM
-        Remove-AzureVM -Name $VM.Name -ServiceName $VM.ServiceName
+        Remove-AzureVM -Name $VM.Name -ServiceName $VM.ServiceName 
         # Remove Azure Disk from the Azure disk repository in the current subscription
         Remove-AzureDisk -DiskName $VM.VM.OSVirtualHardDisk.DiskName
 
@@ -184,7 +183,7 @@ function local:Migrate-AzureVMs
                 Write-Host "Removed $disk.MediaLink.Segments[2] from $sourceStorageAccount"
             }
         }
-        Write-Host "$VM.Name has been migrated from $sourceStorageAccount to $DestStorageAcct"
+        Write-Host $VM.Name+" has been migrated from $sourceStorageAccount to $DestStorageAcct"
     }
 }
 
