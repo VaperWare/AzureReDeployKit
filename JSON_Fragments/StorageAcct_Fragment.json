@@ -1,6 +1,6 @@
 ﻿    {
       "type": "Microsoft.Storage/storageAccounts",
-      "name": "mgecusstorprodarm01",
+      "name": "[*StorageName*]",
       "apiVersion": "2015-05-01-preview",
       "location": "[variables('location')]",
       "properties": {
